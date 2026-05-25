@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Paperclip closure audit hourly
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5min
+Persistent=true
+Unit=paperclip-audit.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=Paperclip closure audit
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=paperclip-engineer
+Group=paperclip-engineer
+EnvironmentFile=/etc/paperclip-substrate/audit.env
+ExecStart=/srv/paperclip-substrate/bin/audit-closures.sh
+SyslogIdentifier=paperclip-audit
+SuccessExitStatus=1

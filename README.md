@@ -26,9 +26,25 @@ sudo /opt/paperclip-substrate/install.sh
 
 ## What this does NOT do
 
-This commit does not enable a Paperclip agent, register prompts, run tasks, or open pull requests. The substrate is intentionally dormant: it only prepares authentication, canonical checkout refresh, and isolated worktree lifecycle primitives for a later Paperclip phase.
+This repository does not enable a Paperclip agent, register prompts, run tasks, or open pull requests. It prepares authentication, canonical checkout refresh, isolated worktree lifecycle primitives, and the closure-audit timer that guards against evidence-less agent closes.
+
+## Smoke test: audit against the May 22 incident
+
+Run the audit in dry-run mode against the window of the 28-false-closure incident:
+
+```sh
+sudo -u paperclip-engineer /srv/paperclip-substrate/bin/audit-closures.sh \
+  --dry-run \
+  --since 2026-05-22T00:00:00Z \
+  --until 2026-05-23T00:00:00Z
+```
+
+Expected: ≥ 28 "would re-open" entries. The actual May 22 cancellation count
+observed during API discovery was 104 across the full day, so the script may flag
+more than the original manually identified set; review each entry before re-closing.
 
 ## Pointers
 
 - Architecture: [docs/architecture.md](docs/architecture.md)
+- Audit API reference: [docs/audit-api-reference.md](docs/audit-api-reference.md)
 - Canonical build brief: `/Users/leh/worktrees/sqyro/paperclip/docs/plans/codex-brief-paperclip-substrate-a2.md`
