@@ -7,6 +7,9 @@ Paperclip Issues
 CEO agent
       |
       v
+CTO agent
+      |
+      v
 engineer agent
       |
       v
@@ -27,7 +30,7 @@ PR against Sqyro-AI/sqyro
 
 ## Roles
 
-The CEO agent owns triage and dispatch. The engineer agent receives an issue id, asks `create-worktree.sh` for an isolated checkout, performs the implementation inside that worktree, commits to `paperclip/issue-<id>`, pushes, and uses `gh pr create` to open a pull request against `Sqyro-AI/sqyro`.
+The CEO agent owns triage and dispatch. The CTO agent reviews issues and delegates implementation work to the engineer agent. The engineer agent receives an issue id, asks `create-worktree.sh` for an isolated checkout, performs the implementation inside that worktree, commits to `paperclip/issue-<id>`, pushes, and uses `gh pr create` to open a pull request against `Sqyro-AI/sqyro`.
 
 The CTO agent uses the same substrate in read-only mode. It gets repo context from the canonical clone or an issue worktree, reviews the real checked-out files, and reports on concrete code state without mutating the workspace.
 
