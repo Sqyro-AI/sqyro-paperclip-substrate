@@ -574,7 +574,7 @@ reopen_issue() {
   response_file="$(tmp_file)"
   comment="$(build_reopen_comment "$run_display" "$reason")"
 
-  jq -n --arg comment "$comment" '{reopen: true, comment: $comment}' > "$body_file"
+  jq -n --arg comment "$comment" '{restore: true, comment: $comment}' > "$body_file"
   api_patch_json "/api/issues/${issue}" "$body_file" "$response_file"
 }
 
