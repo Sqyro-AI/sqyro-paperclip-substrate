@@ -20,6 +20,7 @@ agents_file=""
 scanned_count=0
 flagged_count=0
 reopened_count=0
+failed_count=0
 
 # Deployment notes:
 # - This Paperclip box uses "cancelled" + cancelledAt as the close state; it does
@@ -286,7 +287,10 @@ api_patch_json() {
       die "Paperclip PATCH ${path} returned HTTP ${http_status}; check PAPERCLIP_AUDIT_API_KEY permissions"
       ;;
     *)
-      die "Paperclip PATCH ${path} returned HTTP ${http_status}"
+      # Non-auth failure (e.g. 404/409/5xx on one issue): do NOT abort the whole
+      # run. Warn and signal failure to the caller so it skips this issue.
+      printf 'WARN: Paperclip PATCH %s returned HTTP %s; skipping this issue\n' "$path" "$http_status" >&2
+      return 1
       ;;
   esac
 
@@ -408,7 +412,7 @@ is_ceo_duplicate_exempt() {
 
   jq -en \
     --arg text "${latest_comment}"$'\n'"${issue_text}"$'\n'"${closing_json}" '
-      $text | test("duplicate of #?\\d+"; "i")
+      $text | test("duplicate of .{0,3}([a-z]+-)?#?\\d+"; "i")
     ' >/dev/null
 }
 
@@ -575,7 +579,7 @@ reopen_issue() {
   comment="$(build_reopen_comment "$run_display" "$reason")"
 
   jq -n --arg comment "$comment" '{restore: true, comment: $comment}' > "$body_file"
-  api_patch_json "/api/issues/${issue}" "$body_file" "$response_file"
+  api_patch_json "/api/issues/${issue}" "$body_file" "$response_file" || return 1
 }
 
 issue_label() {
@@ -599,10 +603,14 @@ flag_issue() {
     return
   fi
 
-  reopen_issue "$issue" "$run_display" "$reason"
-  write_state "$state_file" "$issue" "$run_display" "$closed_at" "$reason"
-  ((reopened_count += 1))
-  printf 're-opened %s (%s): %s\n' "$label" "$issue" "$reason"
+  if reopen_issue "$issue" "$run_display" "$reason"; then
+    write_state "$state_file" "$issue" "$run_display" "$closed_at" "$reason"
+    ((reopened_count += 1))
+    printf 're-opened %s (%s): %s\n' "$label" "$issue" "$reason"
+  else
+    ((failed_count += 1))
+    printf 'WARN: failed to re-open %s (%s); left cancelled for next run\n' "$label" "$issue" >&2
+  fi
 }
 
 audit_issue() {
@@ -751,10 +759,13 @@ main() {
     done < <(list_issue_ids)
   fi
 
-  printf 'audit complete: scanned=%d flagged=%d reopened=%d dry_run=%s window=[%s,%s)\n' \
-    "$scanned_count" "$flagged_count" "$reopened_count" "$dry_run" "$since_iso" "$until_iso"
+  printf 'audit complete: scanned=%d flagged=%d reopened=%d failed=%d dry_run=%s window=[%s,%s)\n' \
+    "$scanned_count" "$flagged_count" "$reopened_count" "$failed_count" "$dry_run" "$since_iso" "$until_iso"
 
-  if [[ "$flagged_count" -gt 0 ]]; then
+  if [[ "$failed_count" -gt 0 ]]; then
+    # Some evidence-less closes could not be re-opened -- operator should check.
+    exit 2
+  elif [[ "$flagged_count" -gt 0 ]]; then
     exit 1
   fi
 }
