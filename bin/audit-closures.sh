@@ -283,12 +283,16 @@ api_patch_json() {
   case "$http_status" in
     2*)
       ;;
-    401|403)
-      die "Paperclip PATCH ${path} returned HTTP ${http_status}; check PAPERCLIP_AUDIT_API_KEY permissions"
+    401)
+      # Bad/missing token -- a global auth failure; abort the whole run.
+      die "Paperclip PATCH ${path} returned HTTP 401; check PAPERCLIP_AUDIT_API_KEY"
       ;;
     *)
-      # Non-auth failure (e.g. 404/409/5xx on one issue): do NOT abort the whole
-      # run. Warn and signal failure to the caller so it skips this issue.
+      # Per-issue failure (403 'cannot mutate another agent's issue', 404, 409,
+      # 5xx): do NOT abort the whole run. Warn and signal failure to the caller
+      # so it skips this issue and continues. 403 here is expected for issues
+      # assigned to another agent -- the audit can detect but not reopen those
+      # with an agent-scoped key (needs an elevated key to enforce).
       printf 'WARN: Paperclip PATCH %s returned HTTP %s; skipping this issue\n' "$path" "$http_status" >&2
       return 1
       ;;
